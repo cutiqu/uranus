@@ -16,8 +16,6 @@ import "core:strings"
 import api "../api"
 import "../config"
 import frontend_headless "../frontend/headless"
-import frontend_sdl "../frontend/sdl"
-import frontend_tui "../frontend/tui"
 import "../host"
 import "../registry"
 
@@ -203,13 +201,5 @@ main :: proc() {
 	clear(&cfg.warnings)
 
 	// ---- run ------------------------------------------------------------------
-	code: int
-	switch frontend {
-	case .SDL:      code = frontend_sdl.run(core, rom_path, &cfg, seconds)
-	case .TUI:      code = frontend_tui.run(core, rom_path, &cfg, cfg_overrides.scale)
-	case .Headless:
-		if hl.frames == 0 && !hl.check { die_usage("--headless needs a frame count") }
-		code = frontend_headless.run(core, rom_path, &cfg, hl)
-	}
-	os.exit(code)
+	run_platform(core, rom_path, &cfg, frontend, hl, seconds, cfg_overrides.scale)
 }
