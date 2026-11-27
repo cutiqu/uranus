@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import sat "../../../cores/saturn"
+import sat "../../../core"
 
 W :: struct { addr, size, val: u32 }
 

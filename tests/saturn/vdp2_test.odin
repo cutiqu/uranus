@@ -5,7 +5,7 @@ package saturn_tests
 // and line scroll.
 
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 @(private = "file")
 Rig :: struct {

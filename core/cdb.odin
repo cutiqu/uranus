@@ -17,7 +17,7 @@
 // commands handle plain ISO9660.
 package saturn_core
 
-import api "../../api"
+import api "../api"
 
 HIRQ_CMOK :: 0x0001
 HIRQ_DRDY :: 0x0002

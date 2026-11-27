@@ -9,7 +9,7 @@ package saturn_core
 
 import "base:intrinsics"
 
-import api "../../api"
+import api "../api"
 
 LINE_CYCLES_320 :: 1820 // master clock cycles per scanline at the 320-wide dot clock
 LINE_CYCLES_352 :: 1708

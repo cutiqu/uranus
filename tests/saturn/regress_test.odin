@@ -4,7 +4,7 @@ package saturn_tests
 // BIOS log (see SATURN_BRINGUP.md, "Slave CPU and VDP1 frame change").
 
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 // BCR1 bit 15 (MASTER) is strapped low on the master SH-2 and high on the slave.
 // The BIOS reset code reads it to tell the CPUs apart; a slave that reads 0 runs

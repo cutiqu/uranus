@@ -7,7 +7,7 @@ package saturn_tests
 import "base:runtime"
 import "core:sync"
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 // ------------------------------------------------------------- coverage ----
 

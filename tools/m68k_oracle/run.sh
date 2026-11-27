@@ -1,5 +1,5 @@
 #!/bin/bash
-# Differential test of cores/saturn/m68k.odin against Musashi (MIT licence).
+# Differential test of core/m68k.odin against Musashi (MIT licence).
 #
 #   MUSASHI=/path/to/Musashi tools/m68k_oracle/run.sh [cases] [seed] [opcode-top-nibble]
 #

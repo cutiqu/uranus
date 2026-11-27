@@ -3,7 +3,7 @@ package frontend_sdl
 // Input: keyboard bindings from config, and game controllers.
 //
 // A Steam Deck presents itself to SDL as an ordinary game controller (Steam
-// Input emulates an Xbox pad), so controller support is the primary path
+// Input emulates a standard gamepad), so controller support is the primary path
 // there; the keyboard is for desktops.
 
 import "core:c"
@@ -47,7 +47,7 @@ read_keyboard :: proc(km: ^Keymap) -> (b: api.Buttons) {
 // ------------------------------------------------------------- controllers ---
 
 // What the controller is doing right now, in SDL's layout-neutral names
-// (south = the A button on an Xbox pad, east = B, and so on).
+// (south = A, east = B, and so on).
 Raw_Pad :: struct {
 	up, down, left, right:         bool,
 	south, east, west, north:      bool,
@@ -66,11 +66,10 @@ Hotkeys :: bit_set[Hotkey]
 // Translate one controller into console buttons plus hotkey chords.
 //
 // Buttons are reported by position, and a core says what its own buttons are
-// (api.Pad_Label). Face buttons follow the Nintendo layout, not the Xbox one: the
-// east button is the generic A and the south button is B, which is where a Game
-// Boy player's thumbs expect them. The Saturn core, whose pad has six face
+// (api.Pad_Label). Face buttons follow a fixed convention: the east button is
+// the generic A and the south button is B. The Saturn core, whose pad has six face
 // buttons, reads south as its A, east as its B, and the bumpers as C and Z; see
-// cores/saturn/interface.odin. Triggers are L2 / R2.
+// core/interface.odin. Triggers are L2 / R2.
 //
 // Hotkeys use the common EmuDeck convention: hold Back (Select), then
 //   Start = quit, Right shoulder = save state, Left shoulder = load state,

@@ -15,7 +15,7 @@ package saturn_tests
 // and say why in the commit.
 
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 import "../../tools/saturn_scenes/scenes"
 
 @(private = "file")

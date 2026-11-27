@@ -1,7 +1,7 @@
 package saturn_tests
 
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 // Gouraud shading (CMDPMOD bit 2). The BIOS start-up animation draws hundreds of
 // shaded lines per frame; flat drawing makes it a white blob.

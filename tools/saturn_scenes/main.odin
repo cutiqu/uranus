@@ -11,7 +11,7 @@ package saturn_scenes
 import "core:fmt"
 import "core:os"
 import "core:time"
-import sat "../../cores/saturn"
+import sat "../../core"
 import "scenes"
 
 main :: proc() {

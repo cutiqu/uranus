@@ -26,7 +26,7 @@
 // loop on an endless catch-up (see `valid`).
 package saturn_core
 
-import lib "../../corelib"
+import lib "../corelib"
 import "base:intrinsics"
 
 STATE_MAGIC   :: u32(0x5341_5455) // "UTAS" in memory order: Saturn state

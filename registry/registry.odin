@@ -3,7 +3,7 @@
 package registry
 
 import api "../api"
-import saturn "../cores/saturn"
+import saturn "../core"
 import "core:strings"
 
 // Constructors, in display order.
@@ -26,7 +26,7 @@ find_by_id :: proc(id: string) -> (core: api.Core, ok: bool) {
 	return {}, false
 }
 
-// `ext` is a file extension without the dot, any case ("GB", "gbc").
+// `ext` is a file extension without the dot, any case ("cue", "chd").
 find_by_extension :: proc(ext: string) -> (core: api.Core, ok: bool) {
 	for i in 0 ..< count() {
 		c, info := at(i)

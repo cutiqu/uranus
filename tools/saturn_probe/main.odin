@@ -8,7 +8,7 @@ package saturn_probe
 
 import "core:fmt"
 import "core:os"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 write_ppm :: proc(path: string, v: ^sat.VDP2) {
 	w, h := int(v.width), int(v.height)

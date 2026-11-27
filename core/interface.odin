@@ -3,7 +3,7 @@
 // instance per program (like libretro); the state lives in `g`.
 package saturn_core
 
-import api "../../api"
+import api "../api"
 
 @(private)
 g: Saturn

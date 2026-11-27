@@ -6,7 +6,7 @@ import sdl "vendor:sdl2"
 import api "../../api"
 import "../../config"
 import fsdl "../../frontend/sdl"
-import saturn "../../cores/saturn"
+import saturn "../../core"
 import "core:strings"
 import "core:sync"
 
@@ -304,7 +304,7 @@ the_users_own_keys_win_over_a_cores_suggestions :: proc(t: ^testing.T) {
 
 	// A button the core does not have is reported; other cores' sections are not its business.
 	c = cfg()
-	config.apply_text(&c, "[input.keyboard.saturn]\nturbo = [\"T\"]\n[input.keyboard.gb]\na = [\"N\"]\n")
+	config.apply_text(&c, "[input.keyboard.saturn]\nturbo = [\"T\"]\n[input.keyboard.demo]\na = [\"N\"]\n")
 	config.apply_core(&c, core)
 	testing.expect_value(t, len(c.warnings), 1)
 	if len(c.warnings) == 1 { testing.expect(t, strings.contains(c.warnings[0], "turbo")) }

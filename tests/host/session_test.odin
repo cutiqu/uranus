@@ -8,7 +8,7 @@ package host_tests
 // as one test, one session at a time.
 
 import api "../../api"
-import sat "../../cores/saturn"
+import sat "../../core"
 import host "../../host"
 import "core:fmt"
 import "core:os"

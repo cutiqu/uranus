@@ -5,7 +5,7 @@ package saturn_tests
 // of random single-instruction cases (see tools/m68k_oracle/); these tests keep
 // the behaviours the sound drivers depend on readable and fast to run.
 
-import sat "../../cores/saturn"
+import sat "../../core"
 import "core:testing"
 
 Flat :: struct {

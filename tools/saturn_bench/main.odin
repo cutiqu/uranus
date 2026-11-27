@@ -11,7 +11,7 @@ package saturn_bench
 
 import "core:fmt"
 import "core:time"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 BUDGET_MS :: 1000.0 / 60.0
 CYC_PER_FRAME :: 478_660 // 263 lines x 1820 SH-2 cycles

@@ -6,7 +6,7 @@
 // is a prefix of a longer one.
 package scenes
 
-import sat "../../../cores/saturn"
+import sat "../../../core"
 
 Rng :: struct {s: u64}
 

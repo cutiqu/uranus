@@ -3,7 +3,7 @@ package saturn_tests
 // SCSP: the register-level contract the BIOS sound driver relies on, with a
 // real 68000 program running from sound RAM.
 
-import sat "../../cores/saturn"
+import sat "../../core"
 import "core:testing"
 
 snd_put_words :: proc(s: ^sat.Saturn, at: u32, words: ..u16) {

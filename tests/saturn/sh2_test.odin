@@ -5,7 +5,7 @@ package saturn_tests
 // that were broken or missing in the first Saturn core.
 
 import "core:testing"
-import sat "../../cores/saturn"
+import sat "../../core"
 
 CODE :: 0x06000000
 

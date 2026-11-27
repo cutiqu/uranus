@@ -1,6 +1,6 @@
 # 68000 differential test
 
-`cores/saturn/m68k.odin` (the Saturn's sound CPU) is checked against
+`core/m68k.odin` (the Saturn's sound CPU) is checked against
 [Musashi](https://github.com/kstenerud/Musashi) (MIT licence), the standard 68000
 reference, one random instruction at a time.
 

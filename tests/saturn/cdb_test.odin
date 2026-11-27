@@ -8,7 +8,7 @@ package saturn_tests
 // to the lead-out at 80.
 
 import api "../../api"
-import sat "../../cores/saturn"
+import sat "../../core"
 import "core:testing"
 
 DATA_END :: 60
