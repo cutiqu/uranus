@@ -1,3 +1,4 @@
 build/
 *.chd
 scratch/
+third_party/
