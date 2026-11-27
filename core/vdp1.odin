@@ -92,7 +92,7 @@ vdp1_frame_change :: proc "contextless" (v: ^VDP1) {
 		v.edsr >>= 1 // CEF becomes BEF, CEF clears
 		swapped = true
 	}
-	if (v.tvmr & 8 != 0) || !fcm || (manual && !fct) { erase(v) }
+	if (v.tvmr & 8 != 0) || !fcm || (manual && fct) { erase(v) }
 	v.manual_pending = false
 	if swapped && v.ptmr & 2 != 0 { vdp1_run_list(v) }
 }
