@@ -150,7 +150,7 @@ PAD_MAP := [?]Pad_Map{
 	{"start", .Start, "Return",    4},
 	{"a",     .B,     "J",         5},  // south
 	{"b",     .A,     "L",         6},  // east
-	{"c",     .R,     "M",         7},  // right bumper
+	{"c",     .R,     "N",         7},  // right bumper
 	{"x",     .X,     "H",         8},  // west
 	{"y",     .Y,     "K",         9},  // north
 	{"z",     .L,     "Z",         10}, // left bumper

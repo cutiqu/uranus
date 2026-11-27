@@ -260,10 +260,10 @@ saturn_keyboard_is_laid_out_like_the_pad :: proc(t: ^testing.T) {
 	config.apply_core(&c, core)
 
 	key :: proc(c: ^config.Config, b: api.Button) -> string { return strings.join(c.keys[b][:], "|", context.temp_allocator) }
-	// A B C on J L M, X Y Z on H K Z, L R on Q E: two rows under the fingers like the pad.
+	// A B C on J L N, X Y Z on H K Z, L R on Q E: two rows under the fingers like the pad.
 	testing.expect_value(t, key(&c, .B), "J")  // Saturn a
 	testing.expect_value(t, key(&c, .A), "L")  // Saturn b
-	testing.expect_value(t, key(&c, .R), "M")  // Saturn c
+	testing.expect_value(t, key(&c, .R), "N")  // Saturn c
 	testing.expect_value(t, key(&c, .X), "H")  // Saturn x
 	testing.expect_value(t, key(&c, .Y), "K")  // Saturn y
 	testing.expect_value(t, key(&c, .L), "Z")  // Saturn z
