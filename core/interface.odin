@@ -143,19 +143,19 @@ Pad_Map :: struct {
 
 @(private)
 PAD_MAP := [?]Pad_Map{
-	{"up",    .Up,    "Up",     0},
-	{"down",  .Down,  "Down",   1},
-	{"left",  .Left,  "Left",   2},
-	{"right", .Right, "Right",  3},
-	{"start", .Start, "Return", 4},
-	{"a",     .B,     "Z",      5},  // south
-	{"b",     .A,     "X",      6},  // east
-	{"c",     .R,     "C",      7},  // right bumper
-	{"x",     .X,     "A",      8},  // west
-	{"y",     .Y,     "S",      9},  // north
-	{"z",     .L,     "D",      10}, // left bumper
-	{"l",     .L2,    "Q",      11}, // left trigger
-	{"r",     .R2,    "E",      12}, // right trigger
+	{"up",    .Up,    "W|Up",      0},
+	{"down",  .Down,  "S|Down",    1},
+	{"left",  .Left,  "A|Left",    2},
+	{"right", .Right, "D|Right",   3},
+	{"start", .Start, "Return",    4},
+	{"a",     .B,     "J",         5},  // south
+	{"b",     .A,     "L",         6},  // east
+	{"c",     .R,     "M",         7},  // right bumper
+	{"x",     .X,     "H",         8},  // west
+	{"y",     .Y,     "K",         9},  // north
+	{"z",     .L,     "Z",         10}, // left bumper
+	{"l",     .L2,    "Q",         11}, // left trigger
+	{"r",     .R2,    "E",         12}, // right trigger
 }
 
 @(private)

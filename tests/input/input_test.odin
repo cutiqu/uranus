@@ -260,19 +260,19 @@ saturn_keyboard_is_laid_out_like_the_pad :: proc(t: ^testing.T) {
 	config.apply_core(&c, core)
 
 	key :: proc(c: ^config.Config, b: api.Button) -> string { return strings.join(c.keys[b][:], "|", context.temp_allocator) }
-	// A B C on Z X C, X Y Z on A S D, L R on Q E: two rows under the fingers like the pad.
-	testing.expect_value(t, key(&c, .B), "Z")  // Saturn a
-	testing.expect_value(t, key(&c, .A), "X")  // Saturn b
-	testing.expect_value(t, key(&c, .R), "C")  // Saturn c
-	testing.expect_value(t, key(&c, .X), "A")  // Saturn x
-	testing.expect_value(t, key(&c, .Y), "S")  // Saturn y
-	testing.expect_value(t, key(&c, .L), "D")  // Saturn z
+	// A B C on J L M, X Y Z on H K Z, L R on Q E: two rows under the fingers like the pad.
+	testing.expect_value(t, key(&c, .B), "J")  // Saturn a
+	testing.expect_value(t, key(&c, .A), "L")  // Saturn b
+	testing.expect_value(t, key(&c, .R), "M")  // Saturn c
+	testing.expect_value(t, key(&c, .X), "H")  // Saturn x
+	testing.expect_value(t, key(&c, .Y), "K")  // Saturn y
+	testing.expect_value(t, key(&c, .L), "Z")  // Saturn z
 	testing.expect_value(t, key(&c, .L2), "Q") // Saturn l
 	testing.expect_value(t, key(&c, .R2), "E") // Saturn r
 	testing.expect_value(t, key(&c, .Start), "Return")
-	// WASD is gone from the D-pad: A S D are face buttons now.
-	testing.expect_value(t, key(&c, .Up), "Up")
-	testing.expect_value(t, key(&c, .Left), "Left")
+	// D-pad is WASD + arrows.
+	testing.expect_value(t, key(&c, .Up), "W|Up")
+	testing.expect_value(t, key(&c, .Left), "A|Left")
 
 	// And every key name is a real SDL key.
 	km := fsdl.keymap_from_config(&c)
@@ -290,7 +290,7 @@ the_users_own_keys_win_over_a_cores_suggestions :: proc(t: ^testing.T) {
 	config.apply_text(&c, "[input.keyboard]\nb = [\"K\"]\n")
 	config.apply_core(&c, core)
 	testing.expect_value(t, key(&c, .B), "K")  // Saturn a: pinned by the user
-	testing.expect_value(t, key(&c, .A), "X")  // Saturn b: still the core's suggestion
+	testing.expect_value(t, key(&c, .A), "L")  // Saturn b: still the core's suggestion
 	free_cfg(&c)
 
 	// The console's own names in [input.keyboard.saturn] win over everything.
@@ -347,9 +347,9 @@ a_written_out_default_config_does_not_block_a_cores_layout :: proc(t: ^testing.T
 	defer free_cfg(&c)
 	config.apply_text(&c, text)
 	config.apply_core(&c, core)
-	testing.expect_value(t, strings.join(c.keys[.B][:], "|", context.temp_allocator), "Z")
+	testing.expect_value(t, strings.join(c.keys[.B][:], "|", context.temp_allocator), "J")
 	testing.expect_value(t, strings.join(c.keys[.L2][:], "|", context.temp_allocator), "Q")
-	testing.expect_value(t, strings.join(c.keys[.Left][:], "|", context.temp_allocator), "Left") // no stray "A"
+	testing.expect_value(t, strings.join(c.keys[.Left][:], "|", context.temp_allocator), "A|Left") // D-pad is WASD + arrows
 
 	// A key the user actually changed in that file still wins.
 	c2 := cfg()
