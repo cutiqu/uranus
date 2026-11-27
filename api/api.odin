@@ -20,7 +20,7 @@ Button :: enum u32 {
 	A, B, X, Y,
 	Start, Select,
 	L, R,
-	C, Z,   // the third button of each face row on a six-button pad (Saturn, Mega Drive)
+	C, Z,   // the third button of each face row on a six-button pad (Saturn)
 	L2, R2, // triggers, for pads that have shoulder buttons *and* triggers
 }
 Buttons :: distinct bit_set[Button; u32]
@@ -86,10 +86,10 @@ Disc :: struct {
 
 Core_Info :: struct {
 	api_version: u32,     // must equal API_VERSION
-	id:          cstring, // short, stable, lower-case: "gb". Used by --core and the registry
+	id:          cstring, // short, stable, lower-case: "saturn". Used by --core and the registry
 	name:        cstring,
 	version:     cstring,
-	extensions:  cstring, // "nes|unf" -- hint only; the core never sees a path
+	extensions:  cstring, // "cue|chd|iso|bin|img" -- hint only; the core never sees a path
 	firmware:    cstring, // "sega_101.bin|sega_100a.bin": BIOS files the host should look for
 	                      // (first hit wins) and pass to load_firmware. "" = needs none
 }
@@ -99,7 +99,7 @@ AV_Info :: struct {
 	fps:           f64,   // frames per second the core wants to be run at
 	sample_rate:   f64,   // audio sample rate in Hz
 	pixel_aspect:  f32,   // width / height of one pixel as displayed: 1.0 = square,
-	                      // NES = 8/7. 0 is treated as 1.0 (cores may leave it unset)
+	                      // 0 is treated as 1.0 (cores may leave it unset)
 }
 
 // Borrowed view of the core's framebuffer. Valid until the next run_frame /

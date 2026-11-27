@@ -2,7 +2,7 @@
 // connecting them is api.Core, a struct of procedure pointers.
 //
 // Built to be launched by something else (EmuDeck, EmulationStation, Steam
-// ROM Manager): `uranus game.gb` boots straight into the game, prints nothing
+// ROM Manager): `uranus game.img` boots straight into the game, prints nothing
 // unless something is wrong, and reports failure through its exit code.
 //
 //   exit 0  normal exit            exit 1  could not run (bad ROM, no core, ...)

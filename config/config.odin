@@ -26,7 +26,7 @@ Config :: struct {
 	scale:         int,  // initial window = native size * scale
 	vsync:         bool,
 	integer_scale: bool, // only whole-number scale factors (crisp pixels)
-	pixel_aspect:  bool, // stretch to the console's real pixel shape (NES 8:7)
+	pixel_aspect:  bool, // stretch to the console's real pixel shape
 
 	// [audio]
 	audio_enabled: bool,
@@ -335,7 +335,7 @@ to_text :: proc(c: ^Config) -> string {
 	w(&sb, "scale = %d            # initial window size multiplier", c.scale)
 	w(&sb, "vsync = %v", c.vsync)
 	w(&sb, "integer_scale = %v    # only whole-number scaling: crisp pixels, black bars", c.integer_scale)
-	w(&sb, "pixel_aspect = %v     # true: stretch to the console's real pixel shape (NES: 8:7)\n", c.pixel_aspect)
+	w(&sb, "pixel_aspect = %v     # true: stretch to the console's real pixel shape\n", c.pixel_aspect)
 
 	w(&sb, "[audio]")
 	w(&sb, "enabled = %v", c.audio_enabled)
