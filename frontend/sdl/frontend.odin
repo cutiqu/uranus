@@ -196,6 +196,11 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 	if !host.session_open(&s, core, rom_path, {sav = sav, state = state, system_dir = cfg.system_dir}, &callbacks) { return 1 }
 	defer host.session_close(&s)
 
+	// Catch non-fatal X11 errors (e.g. the GLX BadValue that makes SDL's
+	// accelerated renderer fail on NVIDIA) so Xlib doesn't exit before the
+	// software fallback can take over.
+	install_x_error_handler()
+
 	if sdl.Init({.VIDEO, .GAMECONTROLLER}) != 0 {
 		fmt.eprintfln("SDL_Init failed: %s", sdl.GetError())
 		return 1
