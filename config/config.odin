@@ -32,6 +32,8 @@ Config :: struct {
 	audio_enabled: bool,
 	latency_ms:    int,  // how much sound to keep queued; lower = more responsive, less safe
 
+	frame_stats: bool, // --frame-stats (not a config key)
+
 	// [input.keyboard]: SDL key names per generic button. These are *positional*
 	// (south / east / west / north face buttons, shoulders, triggers); a console's
 	// own names for its buttons are used in [input.keyboard.<core>], below.
