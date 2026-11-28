@@ -1,10 +1,7 @@
 // SDL2 frontend: a window, real key and controller events, real audio.
 //
-// Pacing: the AUDIO DEVICE is the clock. The device drains a ring buffer at
-// exactly its sample rate; whenever the buffer holds less than the configured
-// latency of sound, we run another core frame and push its samples. Video and
-// audio therefore can't drift apart, and the core's 59.7275 fps needn't match
-// the monitor's refresh rate. With no audio device we fall back to a timer.
+// Pacing: frames fall due on the monotonic clock (host/pacing.odin) and audio is
+// trimmed to match. Vsync only affects present().
 package frontend_sdl
 
 import "base:runtime"
@@ -56,11 +53,30 @@ Audio :: struct {
 	underruns: int, // written by the audio thread, read at exit for the report
 	started:   bool,
 	ok:        bool,
+
+	asked, got: sdl.AudioSpec,
+	cb_frames:  int, // frames per callback
+	perf_freq:  u64,
+	last_cb:    u64,
+	gap_min:    u64,
+	gap_max:    u64,
+	gap_sum:    u64,
+	gap_count:  int,
 }
 
 // Runs on SDL's audio thread, with the device lock already held by SDL.
 audio_callback :: proc "c" (userdata: rawptr, stream: [^]u8, length: c.int) {
 	a := (^Audio)(userdata)
+	now := sdl.GetPerformanceCounter()
+	if a.last_cb != 0 {
+		gap := now - a.last_cb
+		a.gap_min = min(a.gap_min, gap)
+		a.gap_max = max(a.gap_max, gap)
+		a.gap_sum += gap
+		a.gap_count += 1
+	}
+	a.last_cb = now
+	a.cb_frames = int(length) / 4 // stereo 16-bit
 	out := ([^]i16)(stream)[:int(length) / 2]
 	n := host.ring_pop(&a.ring, out)
 	if n < len(out) {
@@ -69,12 +85,15 @@ audio_callback :: proc "c" (userdata: rawptr, stream: [^]u8, length: c.int) {
 	}
 }
 
+// Frames per audio callback; override with -define:URANUS_AUDIO_FRAMES=N.
+AUDIO_DEVICE_FRAMES :: #config(URANUS_AUDIO_FRAMES, 512)
+
 audio_open :: proc(a: ^Audio, rate: int) {
 	want := sdl.AudioSpec{
 		freq     = c.int(rate),
 		format   = sdl.AUDIO_S16SYS,
 		channels = 2,
-		samples  = 512, // device buffer in frames (~10 ms at 48 kHz)
+		samples  = AUDIO_DEVICE_FRAMES, // device buffer in frames (~10 ms at 48 kHz)
 		callback = audio_callback,
 		userdata = a,
 	}
@@ -87,6 +106,9 @@ audio_open :: proc(a: ^Audio, rate: int) {
 		return
 	}
 	a.ring = host.ring_make(rate * 2 / 4) // 250 ms of stereo samples, far more than we queue
+	a.asked, a.got = want, have
+	a.perf_freq = sdl.GetPerformanceFrequency()
+	a.gap_min = max(u64)
 	a.ok = true
 }
 
@@ -100,6 +122,16 @@ audio_push :: proc(a: ^Audio, samples: []i16) {
 	sdl.LockAudioDevice(a.dev)
 	_ = host.ring_push(&a.ring, samples)
 	sdl.UnlockAudioDevice(a.dev)
+}
+
+// Pause and empty the ring, then refill before resuming (after a resync or fast-forward).
+audio_reprime :: proc(a: ^Audio) {
+	if !a.ok || !a.started { return }
+	sdl.PauseAudioDevice(a.dev, true)
+	sdl.LockAudioDevice(a.dev)
+	a.ring.read, a.ring.count = 0, 0
+	sdl.UnlockAudioDevice(a.dev)
+	a.started = false
 }
 
 audio_buffered_frames :: proc(a: ^Audio) -> int {
@@ -184,6 +216,83 @@ toggle_fullscreen :: proc(v: ^Video) {
 	sdl.ShowCursor(0 if v.fullscreen else 1)
 }
 
+// ------------------------------------------------------------------ stats ---
+
+Stats :: struct {
+	on:        bool,
+	interval:  host.Series, // ms between presents
+	cost:      host.Series, // ms to run frames and upload the picture
+	present:   host.Series, // ms inside present()
+	wake_late: host.Series, // us the sleep woke after its deadline
+	buffer:    host.Series, // ms queued before each push
+	trim:      host.Series, // % the audio was stretched (+) or squeezed (-)
+	catchups:  int,
+	resyncs:   int,
+	reprimes:  int,
+}
+
+stats_destroy :: proc(st: ^Stats) {
+	host.series_destroy(&st.interval)
+	host.series_destroy(&st.cost)
+	host.series_destroy(&st.present)
+	host.series_destroy(&st.wake_late)
+	host.series_destroy(&st.buffer)
+	host.series_destroy(&st.trim)
+}
+
+stats_line :: proc(name, unit: string, s: ^host.Series) {
+	sum := host.series_summary(s)
+	if sum.count == 0 {
+		fmt.eprintfln("  %-24s (no samples)", name)
+		return
+	}
+	fmt.eprintfln("  %-24s mean %8.3f  p50 %8.3f  p99 %8.3f  p99.9 %8.3f  max %8.3f  %s",
+		name, sum.mean, sum.p50, sum.p99, sum.p999, sum.max, unit)
+}
+
+stats_report :: proc(st: ^Stats, a: ^Audio, v: ^Video, fps: f64, sample_rate: int, seconds: f64, speed: f64) {
+	period_ms := 1000.0 / fps
+	fmt.eprintfln("frame-stats: %d pictures in %.1f s | core %.4f fps = %.3f ms per frame",
+		len(st.interval.values) + 1, seconds, fps, period_ms)
+
+	info: sdl.RendererInfo
+	_ = sdl.GetRendererInfo(v.renderer, &info)
+	mode: sdl.DisplayMode
+	hz := 0
+	if sdl.GetCurrentDisplayMode(0, &mode) == 0 { hz = int(mode.refresh_rate) }
+	fmt.eprintfln("  video: %s, renderer %s, vsync granted: %v, display %d Hz (SDL2 reports whole Hz only)",
+		sdl.GetCurrentVideoDriver(), info.name, .PRESENTVSYNC in info.flags, hz)
+	if a.ok {
+		fmt.eprintfln("  audio: %s, asked %d frames per callback, SDL says %d, callbacks deliver %d @ %d Hz",
+			sdl.GetCurrentAudioDriver(), a.asked.samples, a.got.samples, a.cb_frames, a.got.freq)
+		if a.gap_count > 0 && a.perf_freq > 0 {
+			to_ms := 1000.0 / f64(a.perf_freq)
+			avg_ms := f64(a.gap_sum) / f64(a.gap_count) * to_ms
+			fmt.eprintfln("         callbacks every %.2f ms on average (shortest %.2f, longest %.2f), underruns: %d",
+				avg_ms, f64(a.gap_min) * to_ms, f64(a.gap_max) * to_ms, a.underruns)
+			device_rate := f64(a.cb_frames) / avg_ms * 1000
+			fmt.eprintfln("         device consumed %.0f frames/s for a nominal %d: its clock reads %+.2f%% off",
+				device_rate, a.got.freq, (device_rate / f64(a.got.freq) - 1) * 100)
+		}
+	} else {
+		fmt.eprintfln("  audio: off")
+	}
+
+	stats_line("picture interval", "ms", &st.interval)
+	fmt.eprintfln("  %-24s %.1f%% of intervals are more than 2 ms from the ideal %.3f ms",
+		"", host.series_share_off(&st.interval, period_ms, 2.0) * 100, period_ms)
+	stats_line("frame cost", "ms", &st.cost)
+	stats_line("present() call", "ms", &st.present)
+	stats_line("timeline wake lateness", "us", &st.wake_late)
+	if a.ok {
+		stats_line("audio queued before push", "ms", &st.buffer)
+		stats_line("audio rate trim", "%", &st.trim)
+		fmt.eprintfln("  game speed vs the core's own rate: %+.2f%% (non-zero only if the audio clock is too far off to trim away)", speed * 100)
+	}
+	fmt.eprintfln("  catch-up bursts: %d | timeline resyncs: %d | audio re-primes: %d",
+		st.catchups, st.resyncs, st.reprimes)
+}
+
 // -------------------------------------------------------------------- run ---
 
 // Runs until the user quits (or `seconds` of wall-clock time pass, if > 0:
@@ -208,7 +317,7 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 	defer sdl.Quit()
 
 	// Audio is optional: a machine with no working sound system should still
-	// get a picture, paced by the timer fallback.
+	// get a picture.
 	audio_wanted := cfg.audio_enabled
 	if audio_wanted && sdl.InitSubSystem({.AUDIO}) != 0 {
 		fmt.eprintfln("audio disabled: %s", sdl.GetError())
@@ -235,17 +344,38 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 	// Keep `latency_ms` of sound queued (on top of the device's own ~10 ms).
 	target_buffered := int(s.av.sample_rate) * cfg.latency_ms / 1000
 
-	frame_samples := int(f64(s.av.sample_rate) / s.av.fps) // sample frames of audio per core frame
-	frame_time := time.Duration(f64(time.Second) / s.av.fps)
-	deadline   := time.tick_now() // used only when there is no audio clock
+	clock := host.clock_make()
+	sleeper: host.Sleeper
+	timeline := host.timeline_make(s.av.fps, 0)
+	rate: host.Rate_Control
+	resampler: host.Resampler
+	scratch: [dynamic]i16 // resampled audio for one frame
+	defer delete(scratch)
+
+	stats := Stats{on = cfg.frame_stats}
+	defer stats_destroy(&stats)
+	last_present := i64(-1)
+
 	start      := time.tick_now()
 	last_title := time.tick_now()
+	last_status := time.tick_now()
+	status_underruns := 0
 
 	total_frames, title_frames: int
 	running, muted := true, !audio_wanted
+	fast, was_fast := false, false
 	prev_hotkeys: Hotkeys
 
 	for running {
+		// ---- wait for the next frame ---------------------------------------
+		if !fast {
+			now := host.clock_ns(&clock)
+			if wait := host.timeline_wait_ns(&timeline, now); wait > 0 {
+				late := host.sleep_until(&clock, &sleeper, now + wait)
+				if stats.on { host.series_add(&stats.wake_late, f64(late) / 1000) }
+			}
+		}
+
 		// ---- events (one-shot keyboard hotkeys, controller hot-plug) -------
 		ev: sdl.Event
 		for sdl.PollEvent(&ev) {
@@ -282,24 +412,34 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 		if .Reset      in pressed { s.emu.reset() }
 
 		// ---- decide how many frames to run ---------------------------------
+		fast = sdl.GetKeyboardStateAsSlice()[int(sdl.Scancode.TAB)] != 0
 		frames_to_run := 0
-		fast := sdl.GetKeyboardStateAsSlice()[int(sdl.Scancode.TAB)] != 0
-		switch {
-		case fast:
+		now := host.clock_ns(&clock)
+		if fast {
 			frames_to_run = 4
-		case audio.ok:
-			// One frame in steady state; more after a hitch so the buffer can recover
-			// (see host/pacing.odin for why a fixed one-per-iteration cannot).
-			frames_to_run = host.pace_audio_frames(audio_buffered_frames(&audio), target_buffered, frame_samples)
-		case:
-			now := time.tick_now()
-			if time.tick_diff(deadline, now) >= 0 {
-				frames_to_run = 1
-				deadline = time.tick_add(deadline, frame_time)
-				if time.tick_diff(deadline, now) > 100 * time.Millisecond { deadline = now } // fell far behind
+			was_fast = true
+		} else {
+			if was_fast { // leaving fast-forward
+				host.timeline_reset(&timeline, now)
+				audio_reprime(&audio)
+				host.rate_reprime(&rate)
+				stats.reprimes += 1
+				was_fast = false
+			}
+			due := host.timeline_due(&timeline, now)
+			frames_to_run = due.frames
+			if due.frames > 1 { stats.catchups += 1 }
+			if due.resynced { // ring ran dry
+				audio_reprime(&audio)
+				host.rate_reprime(&rate)
+				stats.resyncs += 1
+				stats.reprimes += 1
 			}
 		}
+		if frames_to_run == 0 { continue } // woke early
 
+		// ---- run -----------------------------------------------------------
+		t_run := host.clock_ns(&clock)
 		ran := 0
 		for _ in 0 ..< frames_to_run {
 			s.emu.run_frame()
@@ -310,14 +450,23 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 			if audio.ok && !fast {
 				a: api.Audio_Buffer
 				s.emu.get_audio(&a)
-				samples := a.samples[:a.frames * 2]
-				if muted {
-					silent := make([]i16, len(samples))
-					audio_push(&audio, silent)
-					delete(silent)
-				} else {
-					audio_push(&audio, samples)
+
+				buffered := audio_buffered_frames(&audio)
+				ratio := 1.0
+				if audio.started {
+					ratio = host.rate_update(&rate, buffered, target_buffered, int(s.av.sample_rate))
+					host.timeline_set_speed(&timeline, rate.speed)
+					if stats.on {
+						host.series_add(&stats.buffer, f64(buffered) * 1000 / f64(s.av.sample_rate))
+						host.series_add(&stats.trim, (ratio - 1) * 100)
+					}
 				}
+				clear(&scratch)
+				host.resample_stereo(&resampler, a.samples[:a.frames * 2], ratio, &scratch)
+				if muted {
+					for i in 0 ..< len(scratch) { scratch[i] = 0 }
+				}
+				audio_push(&audio, scratch[:])
 			}
 		}
 
@@ -328,14 +477,19 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 			audio.started = true
 		}
 
-		if ran > 0 {
-			f: api.Video_Frame
-			s.emu.get_video(&f)
-			video_upload(&video, f)
-			video_present(&video)
-		} else {
-			sdl.Delay(1) // nothing due yet; don't spin the CPU
+		// ---- present -------------------------------------------------------
+		f: api.Video_Frame
+		s.emu.get_video(&f)
+		video_upload(&video, f)
+		t_uploaded := host.clock_ns(&clock)
+		video_present(&video)
+		t_presented := host.clock_ns(&clock)
+		if stats.on {
+			if last_present >= 0 { host.series_add(&stats.interval, f64(t_presented - last_present) / 1e6) }
+			host.series_add(&stats.cost, f64(t_uploaded - t_run) / 1e6)
+			host.series_add(&stats.present, f64(t_presented - t_uploaded) / 1e6)
 		}
+		last_present = t_presented
 
 		// ---- window title: live fps + buffer ------------------------------
 		if time.duration_seconds(time.tick_since(last_title)) >= 1 {
@@ -347,6 +501,15 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 			last_title = time.tick_now()
 		}
 
+		// ---- --frame-stats progress ----------------------------------------
+		if stats.on && time.duration_seconds(time.tick_since(last_status)) >= 30 {
+			fmt.eprintfln("frame-stats %4.0f s: audio underruns in the last 30 s: %d | game speed %+.2f%% | audio queued %.0f ms",
+				time.duration_seconds(time.tick_since(start)), audio.underruns - status_underruns, rate.speed * 100,
+				f64(audio_buffered_frames(&audio)) * 1000 / f64(s.av.sample_rate) if audio.ok else 0.0)
+			status_underruns = audio.underruns
+			last_status = time.tick_now()
+		}
+
 		host.session_tick(&s, ran)
 	}
 
@@ -355,5 +518,6 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, seconds: int)
 		fmt.eprintfln("sdl: %d frames in %.2f s = %.2f fps (core nominal %.2f) | audio underruns: %d",
 			total_frames, elapsed, f64(total_frames) / elapsed, s.av.fps, audio.underruns)
 	}
+	if stats.on { stats_report(&stats, &audio, &video, s.av.fps, int(s.av.sample_rate), elapsed, rate.speed) }
 	return 0
 }
