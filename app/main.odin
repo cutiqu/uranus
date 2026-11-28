@@ -35,6 +35,7 @@ options:
       --scale N        window size multiplier
       --no-vsync       don't wait for the monitor's refresh
       --mute           no audio
+      --frame-stats    print frame-pacing statistics on exit (SDL frontend)
   -v, --verbose        also show the core's informational messages
       --tui            draw in the terminal instead of a window
 
@@ -85,7 +86,7 @@ full_config_text :: proc(cfg: ^config.Config) -> string {
 main :: proc() {
 	// ---- command line -----------------------------------------------------
 	rom_path, core_id, config_path, dump_path, wav_path: string
-	cfg_overrides: struct { fullscreen, windowed, no_vsync, mute, verbose: bool, scale: int }
+	cfg_overrides: struct { fullscreen, windowed, no_vsync, mute, verbose, frame_stats: bool, scale: int }
 	frontend := Frontend.SDL
 	hl := frontend_headless.Options{}
 	seconds: int
@@ -118,6 +119,7 @@ main :: proc() {
 		case "-w", "--windowed":   cfg_overrides.windowed = true
 		case "--no-vsync":     cfg_overrides.no_vsync = true
 		case "--mute":         cfg_overrides.mute = true
+		case "--frame-stats":  cfg_overrides.frame_stats = true
 		case "-v", "--verbose": cfg_overrides.verbose = true
 		case "--scale":        cfg_overrides.scale = number(args, &i, arg)
 		case "--tui":          frontend = .TUI
@@ -171,6 +173,7 @@ main :: proc() {
 	if cfg_overrides.no_vsync   { cfg.vsync = false }
 	if cfg_overrides.mute       { cfg.audio_enabled = false }
 	if cfg_overrides.verbose    { cfg.verbose = true }
+	if cfg_overrides.frame_stats { cfg.frame_stats = true }
 	if cfg_overrides.scale > 0  { cfg.scale = cfg_overrides.scale }
 
 	for w in cfg.warnings { fmt.eprintfln("uranus: config: %s", w) }
