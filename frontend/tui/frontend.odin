@@ -5,7 +5,6 @@ package frontend_tui
 
 import "core:fmt"
 import "core:strings"
-import "core:time"
 import api "../../api"
 import "../../config"
 import "../../host"
@@ -48,13 +47,19 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, scale_opt: in
 	strings.builder_init(&sb)
 	defer strings.builder_destroy(&sb)
 
-	frame_time := time.Duration(f64(time.Second) / s.av.fps)
-	deadline   := time.tick_now()
+	clock := host.clock_make()
+	sleeper: host.Sleeper
+	timeline := host.timeline_make(s.av.fps, host.clock_ns(&clock))
 	key_buf:      [64]byte
 	frames:       u64
 	audio_frames: u64
 
 	for !ctx.input.quit {
+		now := host.clock_ns(&clock)
+		if wait := host.timeline_wait_ns(&timeline, now); wait > 0 {
+			host.sleep_until(&clock, &sleeper, now + wait)
+		}
+
 		n := term_read(key_buf[:])
 		input_feed(&ctx.input, key_buf[:n])
 
@@ -82,13 +87,7 @@ run :: proc(core: api.Core, rom_path: string, cfg: ^config.Config, scale_opt: in
 
 		host.session_tick(&s, 1)
 
-		deadline = time.tick_add(deadline, frame_time)
-		remaining := time.tick_diff(time.tick_now(), deadline)
-		if remaining > 0 {
-			time.sleep(remaining)
-		} else if remaining < -10 * frame_time {
-			deadline = time.tick_now()
-		}
+		host.timeline_due(&timeline, host.clock_ns(&clock))
 	}
 	return 0
 }
