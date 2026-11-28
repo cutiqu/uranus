@@ -26,6 +26,6 @@ odin build app \
     -target:linux_arm64 -subtarget:android \
     -build-mode:shared -minimum-os-version:29 \
     -out:build/uranus.so \
-    -extra-linker-flags:"-fuse-ld=lld -L$LLVM_DIR/lib/gcc/aarch64-linux-android/4.9.x -lgcc"
+    -extra-linker-flags:"-fuse-ld=lld -L$LLVM_DIR/lib/gcc/aarch64-linux-android/4.9.x"
 
 echo "built build/uranus.so"
